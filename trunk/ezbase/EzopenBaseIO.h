@@ -76,6 +76,8 @@ protected:
   bool prepROMOp ( handle_t &hDev, u_int32_t page );
   bool closeROMOp ( handle_t &hDev );
   dword_t writeDevice ( handle_t &hDev, uint_t address, word_t data );
+  bool cartRead ( handle_t &hDev, dword_t offset, byte_t* buf, unsigned long bs );
+  bool cartWrite ( handle_t &hDev, dword_t offset, byte_t* buf, unsigned long bs );
  public:
   bool cartOpen ( handle_t &hDev );
   bool cartClose ( handle_t &hDev );
