@@ -1,10 +1,14 @@
 #include <iostream>
-#include <stdio.h>
+#include <fstream>
 #include <iomanip>
 
 #include <sys/types.h>
 
 #include "CEzFlashFujistu.h"
+
+#define BLOCK_COUNT_DEFAULT   4
+#define BLOCK_SIZE_DEFAULT    0x8000
+#define BLOCK_OFFSET_DEFAULT  0
 
 using namespace std;
 
@@ -18,7 +22,7 @@ struct gba_header
   u_int8_t reserved;        /* reserved */
   u_int8_t unit_code;       /* main unit code, 00h for GBA */
   u_int8_t device_type;     /* device type */
-  char reserved1 [ 3 ];
+  char reserved1 [ 3 ];     /* reserved */
   u_int16_t rom_size;       /* size of rom * 32k */
   u_int8_t saver_size;      /* size of rom's saver * 32k */
   char reserved2 [ 2 ];     /* reserved */
@@ -27,130 +31,385 @@ struct gba_header
   char reserved3;           /* reserved */
 };
 
-BYTE* read_cart ( CEzFlashBase t, HANDLE h, int offset, int length )
+// initialise reading of ROM
+void
+readROMOpen ( CEzFlashBase &t, HANDLE h )
 {
-  BYTE* buf = ( BYTE* ) calloc ( 1, 192 );
-
   t.CartSetROMPage ( h, 0 );
-  
   t.CartOpenPort ( h );
   t.CartOpenFlashOP ( h );
-
   t.SetReadArray ( h );
+}
 
-  t.CartRead ( h, offset, buf, 192 );
-
-  t.CartCloseFlashOP ( h );
-  t.CartClosePort ( h );
+// read data from the ROM
+BYTE*
+readROM ( CEzFlashBase &t, HANDLE h, u_int32_t offset, u_int32_t length )
+{
+  BYTE* buf = ( BYTE* ) calloc ( 1, length );
+  
+  t.CartRead ( h, offset, buf, length );
 
   return buf;
 }
 
-int main ( int argc, char *argv [] )
+// finish reading of ROM
+void
+readROMClose ( CEzFlashBase &t, HANDLE h )
 {
-  HANDLE h;
+  t.CartCloseFlashOP ( h );
+  t.CartClosePort ( h );
+}
+
+// initialise writing/erasing of ROM
+void
+writeROMOpen ( CEzFlashBase &t, HANDLE h )
+{
+  t.CartOpenFlashOP ( h );
+  t.SetReadArray ( h );
+}
+
+void
+writeROM ( CEzFlashBase &t, HANDLE h, u_int32_t offset, BYTE* buf, u_int32_t bs )
+{
+  t.CartWriteEx ( h, offset, buf, bs );
+}
+
+// close ROM writing
+void
+writeROMClose ( CEzFlashBase &t, HANDLE h )
+{
+  t.CartCloseFlashOP ( h );
+}
+
+// open ROM erasing
+void
+eraseROMOpen ( CEzFlashBase &t, HANDLE h )
+{
+  t.CartOpenFlashOP ( h );
+}
+
+void
+eraseROM ( CEzFlashBase &t, HANDLE h, u_int32_t block )
+{
+  t.CartErase ( h, block );
+}
+
+// close ROM erasing
+void
+eraseROMClose ( CEzFlashBase &t, HANDLE h )
+{
+  t.CartCloseFlashOP ( h );
+}
+
+// get cart info
+struct gba_header*
+romGetInfo ( CEzFlashBase &t, HANDLE h, int offset )
+{
+  // start by reading the first 192 bytes, which should contain the first
+  // ROM's header
+  readROMOpen ( t, h );
   
+  struct gba_header *gbah =
+    ( struct gba_header* ) readROM ( t, h, offset, sizeof ( gba_header ) );
+
+  readROMClose ( t, h );
+
+  return gbah;
+}
+
+void
+romDisplayInfo ( struct gba_header *gbah )
+{
+  cout << "Entry address: 0x" << hex << gbah->start_address << endl
+       << "Title: \"" << gbah->title << "\"" << endl
+       << "Game code: " << gbah->code << endl
+       << "Maker: " << gbah->maker << endl
+       << "Reserved (1): 0x" << hex << ( u_int32_t ) gbah->reserved << endl
+       << "Unit code: 0x" << hex << ( u_int32_t ) gbah->unit_code << endl
+       << "Device type: 0x" << hex << ( u_int32_t ) gbah->device_type << endl
+       << "Reserved (2): 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 0 ]
+                    << " 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 1 ]
+                    << " 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 2 ]
+                    << endl
+       << "ROM size: " << dec << ( u_int32_t ) gbah->rom_size
+          << " * 32K" << endl
+       << "Saver size: " << dec << ( u_int32_t ) gbah->saver_size
+          << " * 32K" << endl
+       << "Reserved (3): 0x" << hex << ( u_int32_t ) gbah->reserved2 [ 0 ]
+                    << " 0x" << hex << ( u_int32_t ) gbah->reserved2 [ 1 ]
+                    << endl
+       << "Compliment byte: 0x" << hex
+          << ( u_int32_t ) gbah->complement << endl
+       << "Menu tag: 0x" << hex << ( u_int32_t ) gbah->menu_tag << endl
+       << "Reserved (4): 0x" << hex << ( u_int32_t ) gbah->reserved3 << endl;
+}
+
+bool
+cartOpen ( CEzFlashBase &t, HANDLE &h )
+{
+  if ( t.OpenCartDevice ( h ) == false )
+    return false;
+
+  //t.CartLock ( h );
+
+  return true;
+}
+
+void
+cartClose ( CEzFlashBase &t, HANDLE &h )
+{
+  t.CartUnlock ( h );
+  t.CloseCartDevice ( h );
+}
+
+int
+main ( int argc, char *argv [] )
+{
+  HANDLE h = NULL;
   CEzFlashFujistu t;
 
-  if ( t.OpenCartDevice ( h ) == false )
-  {
-    cout << "Ack!" << endl;
-    exit ( -1 );
-  }
+  // default block size is 0x8000 = 32768 bytes = 0.25mbit
+  u_int32_t block_size = BLOCK_SIZE_DEFAULT;
+
+  // number of blocks to read/write
+  u_int32_t block_count = BLOCK_COUNT_DEFAULT;
   
-  unsigned int size = t.CartReadID ( h );
+  // block offset
+  u_int32_t block_offset = BLOCK_OFFSET_DEFAULT;
+ 
+  // default operation
+  string operation = "";
+  
+  // filename
+  string filename = "";
+  
+  // banner
+  cout << "EZOpen EZCart-II PS flasher" << endl
+       << "---------------------------" << endl << endl;
 
-  cout << "Cart ID = " << size << endl;
-
-  if ( argc > 2 )
+  // parse the command line options
+  if ( argc > 1 )
   {
-    if ( ! strcmp ( argv [ 1 ], "write" ) )
-    {
-      // did they specify a start offset?
-      int offset = 0;
-      
-      if ( argc > 3 )
+    operation = string ( argv [ 1 ] );
+
+    // where to start reading options
+    int l = 2;
+    
+    // parse the other options
+    for ( ; l < ( argc - 1 ); ++l )
+    {      
+      if ( ! strcmp ( argv [ l ], "-b" ) )  // block size
       {
-        offset = atoi ( argv [ 3 ] );
-        cout << "Setting write offset to " << offset << endl;
-      }
-      
-      FILE *f = fopen ( argv [ 2 ], "r" );
+        int t = atoi ( argv [ l + 1 ] );
 
-      // make sure we can open the file ...
-      if ( f != NULL )
-      {
-        // find the full length of the file
-        fseek ( f, 0, SEEK_END );
-        unsigned long length = ftell ( f );
-
-        // back we go ...
-        rewind ( f );
-
-        // blocks are 32k!
-        int bsize = 0x8000;
-
-        // number of blocks to use
-        int bcount = ( length / bsize ) + ( length % bsize > 0 ? 1 : 0 );
-
-        cout << "Writing \"" << argv [ 2 ] << "\" to cart ... "
-             << " (cart is " << length << " bytes) "
-             << endl << "Erasing    " << flush;
-
-        t.CartOpenFlashOP ( h );
-
-        for ( int l = ( offset / 2 ); l < ( bcount / 2 ); ++l )
+        if ( t > 0 )
         {
-          cout << "\b\b\b" << setw ( 3 ) << l << flush;
-          t.CartErase ( h, l );
+          cout << "Block size set to " << t << endl;
+          block_size = t;
+          l++;
         }
-
-        cout << "\b\bis complete!" << endl;
-
-        cout << "SetReadArray ... " << flush;
-
-        t.SetReadArray ( h );
-
-        cout << "Done." << endl;
-
-        // quarter megabit chunks
-        cout << "Writing " << bcount
-             << " blocks (in " << bsize << " byte chunks) ... --%" << flush;
-
-        BYTE buf [ bsize ];
-        unsigned long p = 0;
-        float percent = 0;
-        
-        offset *= bsize;
-
-        while ( p < length )
+        else
         {
-          percent = ( ( float ) p / ( float ) length ) * 100.0f;
-
-          cout << "\b\b\b" << setw ( 2 ) << ( int ) percent << "%" << flush;
-
-          fread ( buf, bsize, 1, f );
-
-          t.CartWriteEx ( h, offset + p, buf, bsize );
-
-          p += bsize;
+          cout << "Refusing to set block size to " << t
+               << ", leaving at " << block_size << endl;
         }
-
-        t.CartCloseFlashOP ( h );
-
-        cout << "\b\b\bDone!" << endl;
-        fclose ( f );
       }
-      else
+      else if ( ! strcmp ( argv [ l ], "-o" ) ) // read/write block offset
       {
-        cout << "Couldn't open \"" << argv [ 2 ] << "\"" << endl;
+        int t = atoi ( argv [ l + 1 ] );
+
+        if ( t >= 0 )
+        {
+          cout << "Block offset set to " << t << endl;
+          block_offset = t;
+          l++;
+        }
+        else
+        {
+          cout << "Refusing to set block offset to " << t
+               << ", leaving at " << block_offset << endl;
+        }
+      }
+      else if ( ! strcmp ( argv [ l ], "-c" ) ) // block count
+      {
+        int t = atoi ( argv [ l + 1 ] );
+
+        if ( t >= 0 )
+        {
+          cout << "R/W block count set to " << t << endl;
+          block_count = t;
+          l++;
+        }
+        else
+        {
+          cout << "Refusing to set r/w block count to " << t
+               << ", leaving at " << block_count << endl;
+        }
+      }
+      else if ( ! strcmp ( argv [ l ], "-f" ) ) // filename
+      {
+        filename = argv [ ++l ];
       }
     }
+  }
+
+  // check the operation
+  if ( operation == "read" )
+  {
+    // try to open the device
+    if ( cartOpen ( t, h ) == false )
+    {
+      cout << "Cannot open device! (Permissions problem?)" << endl;
+      return 1;
+    }
+  }
+  else if ( operation == "write" )
+  {
+    // try to open the device
+    if ( cartOpen ( t, h ) == false )
+    {
+      cout << "Cannot open device! (Permissions problem?)" << endl;
+      return 1;
+    }
+
+    // open the filename
+    if ( filename == "" )
+    {
+      cout << "No ROM file specified." << endl;
+      return 1;
+    }
+    
+    // open the ROM file
+    ifstream rom ( filename.c_str () );
+    
+    // make sure we can open the file ...
+    if ( ! rom )
+    {
+      // couldn't open file :(
+      cout << "Could not open ROM file \"" << filename << "\"." << endl;
+      return 1;
+    }
+    else
+    {
+      // find the full length of the file
+      rom.seekg ( 0, ios::end );
+      
+      u_int32_t length = rom.tellg ();
+      
+      rom.seekg ( 0, ios::beg );
+      
+      // calculate the number of blocks to write
+      block_count = ( length / block_size ) + ( length % block_size > 0 ? 1 : 0 );
+
+      cout << "Writing \"" << filename << "\" to cart "
+           << "(cart is " << block_count << " * " << block_size << " blocks) "
+           << endl << "Erasing - --%" << flush;
+
+      // start ROM erasing
+      eraseROMOpen ( t, h );
+
+      float percent = 0.0f;
+      float pinc = 100.0f / ( float ) ( block_count / 2.0f );
+
+      for ( u_int32_t l = block_offset;
+            l < ( block_offset + block_count ); l += 2 )
+      {
+        cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
+        
+        eraseROM ( t, h, l );
+
+        percent += pinc;
+      }
+
+      cout << "\b\b\bDone." << endl << flush;
+      
+      // finish ROM erasing
+      eraseROMClose ( t, h );
+
+      // start ROM writing
+      writeROMOpen ( t, h );
+      
+      cout << "Flashing - --%" << flush;
+
+      BYTE buf [ block_size ];
+      percent = 0;
+      u_int32_t bc = 0;
+      
+      pinc = 100.0f / ( float ) block_count;
+      
+      while ( bc < block_count )
+      {
+        cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
+
+        rom.read ( ( char* ) buf, block_size );
+
+        writeROM ( t, h, ( bc * block_size ), buf, block_size );
+
+        percent += pinc;
+        bc++;
+      }
+
+      // finish ROM writing
+      writeROMClose ( t, h );
+
+      cout << "\b\b\bDone." << endl;
+      
+      rom.close ();
+    }
+    
+    cartClose ( t, h );
+  }
+  else if ( operation == "readram" )
+  {
+    // try to open the device
+    if ( cartOpen ( t, h ) == false )
+    {
+      cout << "Cannot open device! (Permissions problem?)" << endl;
+      return 1;
+    }
+  }
+  else if ( operation == "writeram" )
+  {
+    // try to open the device
+    if ( cartOpen ( t, h ) == false )
+    {
+      cout << "Cannot open device! (Permissions problem?)" << endl;
+      return 1;
+    }
+  }
+  else if ( operation == "info" )
+  {
+    // try to open the device
+    if ( cartOpen ( t, h ) == false )
+    {
+      cout << "Cannot open device! (Permissions problem?)" << endl;
+      return 1;
+    }
+  }
+  else
+  {
+    // help!
+    cout << argv [ 0 ] << " operation [ options ]" << endl
+         << endl
+         << "where;" << endl
+         << "  operation  = [ read | write | readram | writeram | info ]"
+            << endl
+         << "options;" << endl
+         << "  -b integer = block size (default: " << BLOCK_SIZE_DEFAULT
+            << ")" << endl
+         << "  -c integer = block count to read/write (default: "
+            << BLOCK_COUNT_DEFAULT << ")" << endl
+         << "  -o integer = read/write block offset (default: "
+            << BLOCK_OFFSET_DEFAULT << ")" << endl
+         << "  -f filename = file to read/write (for everything other than info)"
+            << endl
+         << endl;
+  }
+  
+/*
     else if ( ! strcmp ( argv [ 1 ], "writeram" ) )
     {
       // did they specify a start offset?
-      int offset = 0;
-      
       if ( argc > 3 )
       {
         offset = atoi ( argv [ 3 ] );
@@ -169,11 +428,8 @@ int main ( int argc, char *argv [] )
         // back we go ...
         rewind ( f );
 
-        // blocks are 32k!
-        int bsize = 0x8000;
-
         // number of blocks to use
-        int bcount = ( length / bsize ) + ( length % bsize > 0 ? 1 : 0 );
+        int bcount = ( length / block_size ) + ( length % block_size > 0 ? 1 : 0 );
 
         cout << "Writing \"" << argv [ 2 ] << "\" to cart." << endl << flush;
 
@@ -188,13 +444,13 @@ int main ( int argc, char *argv [] )
 
         // quarter megabit chunks
         cout << "Writing " << bcount
-             << " blocks (in " << bsize << " byte chunks) ... --%" << flush;
+             << " blocks (in " << block_size << " byte chunks) ... --%" << flush;
 
-        BYTE buf [ bsize ];
+        BYTE buf [ block_size ];
         unsigned long p = 0;
         float percent = 0;
         
-        offset *= bsize;
+        offset *= block_size;
 
         while ( p < length )
         {
@@ -202,11 +458,11 @@ int main ( int argc, char *argv [] )
 
           cout << "\b\b\b" << setw ( 2 ) << ( int ) percent << "%" << flush;
 
-          fread ( buf, bsize, 1, f );
+          fread ( buf, block_size, 1, f );
 
-          t.CartRAMWriteEx ( h, offset + p, buf, bsize );
+          t.CartRAMWriteEx ( h, offset + p, buf, block_size );
 
-          p += bsize;
+          p += block_size;
         }
 
         //t.CartCloseFlashOP ( h );
@@ -222,10 +478,6 @@ int main ( int argc, char *argv [] )
     }
     else if ( ! strcmp ( argv [ 1 ], "readram" ) )
     {
-      // did they specify a start offset?
-      int offset = 0;
-      int length = 0x8000;
-      
       if ( argc > 3 )
       {
         length = atoi ( argv [ 3 ] );
@@ -298,40 +550,7 @@ int main ( int argc, char *argv [] )
       }
     }
   }
-  else if ( argc > 1 )
-  {
-    // some options don't require the extra parameter
-
-    // dump the cart's info
-    if ( ! strcmp ( "info", argv [ 1 ] ) )
-    {
-      // start by reading the first 196 bytes, which should contain the first
-      // ROM's header
-      struct gba_header *gbah = ( struct gba_header* ) read_cart ( t, h, 0, 192 );
-
-      int rom_number = 1;
-      
-      cout << "ROM info, number " << dec << rom_number << ";" << endl
-           << "Entry address: 0x" << hex << gbah->start_address << endl
-           << "Title: \"" << gbah->title << "\"" << endl
-           << "Game code: " << gbah->code << endl
-           << "ROM size: " << dec << ( u_int32_t ) gbah->rom_size << " * 32K" << endl
-           << "Saver size: " << dec << ( u_int32_t ) gbah->saver_size << " * 32K" << endl
-           << "Compliment byte: 0x" << hex << ( u_int32_t ) gbah->complement << endl
-           << "Menu tag: 0x" << hex << ( u_int32_t ) gbah->menu_tag << endl;
-
-      free ( gbah );
-    }
-  }
-  else
-  {
-    cout << "Usage: " << argv [ 0 ]
-         << " [ write | read | info ] [ ... ]" << endl;
-  }
-  
-  t.CartUnlock ( h );
-  
-  t.CloseCartDevice ( h );
+*/
 }
 
 // patch_rom re-writes the rom's header so that it can be used with EZLoader,

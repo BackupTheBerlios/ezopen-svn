@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DEBUG=-DDEBUG
+DEBUG="-DDEBUG -g"
 
 g++ ${DEBUG} -O2 -Wall -c -o CEzFlashBase.o CEzFlashBase.cc
 g++ ${DEBUG} -O2 -Wall -c -o CEzFlashFujistu.o CEzFlashFujistu.cc
