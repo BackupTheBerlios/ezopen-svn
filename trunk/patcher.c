@@ -6,7 +6,7 @@
 /* For some reason the 'official' software uses 0xCF, but I can only make it
  * work when using 0xCE ... */
  
-char patch_be [] = { 0xCE };
+char patch_be [] = { 0xCF };
 
 int main ( int argc, char* argv [] )
 {
@@ -27,17 +27,25 @@ int main ( int argc, char* argv [] )
     patch_saver = ( char ) atoi ( argv [ 2 ] );
     printf ( "Saver size = %d (%d bytes)\n", ( int ) patch_saver,
              ( int ) ( patch_saver * 32768 ) );
+
+    if ( argc > 3 )
+    {
+      blocks = ( unsigned short ) atoi ( argv [ 3 ] );
+    }
   }
   
   inf = fopen ( argv [ 1 ], "r+" );
 
-  // find the length
-  fseek ( inf, 0, SEEK_END );
-  length = ftell ( inf );
-  rewind ( inf );
-  
   // patch 0xB8 with a short for the number of 32K blocks this rom takes up
-  blocks = ( length / 0x8000 ) + ( length % 0x8000 > 0 ? 1 : 0 );
+  if ( ! blocks )
+  {
+    // find the length
+    fseek ( inf, 0, SEEK_END );
+    length = ftell ( inf );
+    rewind ( inf );
+  
+    blocks = ( length / 0x8000 ) + ( length % 0x8000 > 0 ? 1 : 0 );
+  }
 
   // patch the number of 32k blocks that this ROM takes up
   fseek ( inf, 0xB8, SEEK_SET );

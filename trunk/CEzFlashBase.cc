@@ -64,7 +64,7 @@ void CEzFlashBase::CartRead(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned 
 	*(DWORD *)&ctrlbuf[1] = StartAddr;
 //	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,3,(char*)ctrlbuf,4);
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,4,(char*)ctrlbuf,4);
-	sleep(5);
+	//sleep(5);
 //	Bulk(hDev,IOCTL_EZUSB_BULK_READ,8,(char*)pbuf,ByteCount);
 	Bulk(hDev,IOCTL_EZUSB_BULK_READ,2,(char*)pbuf,ByteCount);
 }

@@ -1,0 +1,4 @@
+ccflags = '-DDEBUG -g'
+sources = [ 'ezopen.cc', 'CEzFlashBase.cc', 'CEzFlashFujistu.cc' ]
+libs = [ 'usb' ]
+Program ( 'ezopen', sources, LIBS=libs, CCFLAGS=ccflags )

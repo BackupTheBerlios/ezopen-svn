@@ -37,26 +37,23 @@ readROMOpen ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartSetROMPage ( h, 0 );
   t.CartOpenPort ( h );
-  t.CartOpenFlashOP ( h );
+  t.CartOpenReadOP ( h );
   t.SetReadArray ( h );
 }
 
 // read data from the ROM
-BYTE*
-readROM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, u_int32_t length )
+void
+readROM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, u_int32_t length,
+    BYTE *buf )
 {
-  BYTE* buf = ( BYTE* ) calloc ( 1, length );
-  
   t.CartRead ( h, offset, buf, length );
-
-  return buf;
 }
 
 // finish reading of ROM
 void
 readROMClose ( CEzFlashBase &t, HANDLE &h )
 {
-  t.CartCloseFlashOP ( h );
+  t.CartCloseReadOP ( h );
   t.CartClosePort ( h );
 }
 
@@ -102,19 +99,17 @@ eraseROMClose ( CEzFlashBase &t, HANDLE &h )
 }
 
 // get cart info
-struct gba_header*
-romGetInfo ( CEzFlashBase &t, HANDLE &h, int offset )
+void
+romGetInfo ( CEzFlashBase &t, HANDLE &h, int offset, struct gba_header* gbah )
 {
   // start by reading the first 192 bytes, which should contain the first
   // ROM's header
   readROMOpen ( t, h );
   
-  struct gba_header *gbah =
-    ( struct gba_header* ) readROM ( t, h, offset, sizeof ( gba_header ) );
+  //readROM ( t, h, offset, sizeof ( gbah ), ( BYTE* ) gbah );
+  readROM ( t, h, offset, 192, ( BYTE* ) gbah );
 
   readROMClose ( t, h );
-
-  return gbah;
 }
 
 void
@@ -124,24 +119,31 @@ romDisplayInfo ( struct gba_header *gbah )
        << "Title: \"" << gbah->title << "\"" << endl
        << "Game code: " << gbah->code << endl
        << "Maker: " << gbah->maker << endl
-       << "Reserved (1): 0x" << hex << ( u_int32_t ) gbah->reserved << endl
-       << "Unit code: 0x" << hex << ( u_int32_t ) gbah->unit_code << endl
-       << "Device type: 0x" << hex << ( u_int32_t ) gbah->device_type << endl
-       << "Reserved (2): 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 0 ]
-                    << " 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 1 ]
-                    << " 0x" << hex << ( u_int32_t ) gbah->reserved1 [ 2 ]
-                    << endl
        << "ROM size: " << dec << ( u_int32_t ) gbah->rom_size
           << " * 32K" << endl
        << "Saver size: " << dec << ( u_int32_t ) gbah->saver_size
           << " * 32K" << endl
-       << "Reserved (3): 0x" << hex << ( u_int32_t ) gbah->reserved2 [ 0 ]
-                    << " 0x" << hex << ( u_int32_t ) gbah->reserved2 [ 1 ]
-                    << endl
-       << "Compliment byte: 0x" << hex
-          << ( u_int32_t ) gbah->complement << endl
-       << "Menu tag: 0x" << hex << ( u_int32_t ) gbah->menu_tag << endl
-       << "Reserved (4): 0x" << hex << ( u_int32_t ) gbah->reserved3 << endl;
+       << "Reserved (1): 0x"
+          << hex << ( ( ( u_int32_t ) gbah->reserved ) & 0xff ) << endl
+       << "Unit code: 0x"
+          << hex << ( ( ( u_int32_t ) gbah->unit_code ) & 0xff ) << endl
+       << "Device type: 0x"
+          << hex << ( ( ( u_int32_t ) gbah->device_type ) & 0xff ) << endl
+       << "Reserved (2): 0x"
+          << hex << ( ( ( u_int32_t ) gbah->reserved1 [ 0 ] ) & 0xff )
+          << " 0x" << hex << ( ( ( u_int32_t ) gbah->reserved1 [ 1 ] ) & 0xff )
+          << " 0x" << hex << ( ( ( u_int32_t ) gbah->reserved1 [ 2 ] ) & 0xff )
+          << endl
+       << "Reserved (3): 0x"
+          << hex << ( ( ( u_int32_t ) gbah->reserved2 [ 0 ] ) & 0xff )
+          << " 0x" << hex << ( ( ( u_int32_t ) gbah->reserved2 [ 1 ] ) & 0xff )
+          << endl
+       << "Compliment byte: 0x"
+          << hex << ( ( ( u_int32_t ) gbah->complement ) & 0xff ) << endl
+       << "Menu tag: 0x"
+          << hex << ( ( ( u_int32_t ) gbah->menu_tag ) & 0xff ) << endl
+       << "Reserved (4): 0x"
+          << hex << ( ( ( u_int32_t ) gbah->reserved3 ) & 0xff ) << endl;
 }
 
 bool
@@ -243,6 +245,58 @@ main ( int argc, char *argv [] )
       cout << "Cannot open device! (Permissions problem?)" << endl;
       return 1;
     }
+
+    // open the filename
+    if ( filename == "" )
+    {
+      cout << "No ROM file specified." << endl;
+      return 1;
+    }
+    
+    // open the ROM file
+    ofstream rom ( filename.c_str () );
+    
+    // make sure we can open the file ...
+    if ( ! rom )
+    {
+      // couldn't open file :(
+      cout << "Could not open output file \"" << filename << "\"." << endl;
+      return 1;
+    }
+    else
+    {
+      cout << "Reading " << block_count << " blocks (1 block = " << BLOCK_SIZE
+           << " bytes) from cart and writing to \"" << filename << "\"."
+           << endl << "Reading - --%" << flush;
+
+      // start ROM erasing
+      readROMOpen ( t, h );
+
+      // when erasing the block size is always 65536 (0x10000)
+      BYTE buf [ BLOCK_SIZE ];
+      float percent = 0.0f;
+      float pinc = 100.0f / ( float ) block_count;
+
+      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
+      {
+        cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
+        
+        readROM ( t, h, ( l * BLOCK_SIZE ), BLOCK_SIZE, buf );
+
+        rom.write ( ( char* ) buf, BLOCK_SIZE );
+        
+        percent += pinc;
+      }
+
+      // finish ROM writing
+      readROMClose ( t, h );
+
+      cout << "\b\b\bDone." << endl;
+      
+      rom.close ();
+    }
+    
+    cartClose ( t, h );
   }
   else if ( operation == "write" )
   {
@@ -356,12 +410,38 @@ main ( int argc, char *argv [] )
   }
   else if ( operation == "info" )
   {
-    // try to open the device
-    if ( cartOpen ( t, h ) == false )
+    struct gba_header* gbah = ( struct gba_header* ) calloc ( 1, sizeof ( struct gba_header ) );
+
+    // should we read from a file?
+    if ( filename == "" )
     {
-      cout << "Cannot open device! (Permissions problem?)" << endl;
-      return 1;
+      // try to open the device
+      if ( cartOpen ( t, h ) == false )
+      {
+        cout << "Cannot open device! (Permissions problem?)" << endl;
+        return 1;
+      }
+
+      romGetInfo ( t, h, 0, gbah );
+
+      cartClose ( t, h );
     }
+    else
+    {
+      ifstream rom ( filename.c_str () );
+
+      if ( ! rom )
+      {
+        cout << "Cannot open ROM file \"" << filename << "\"." << endl;
+        return 1;
+      }
+
+      rom.read ( ( char* ) gbah, 192 );
+
+      rom.close ();
+    }
+
+    romDisplayInfo ( gbah );
   }
   else
   {
@@ -497,34 +577,6 @@ main ( int argc, char *argv [] )
         cout << "Couldn't open \"" << argv [ 2 ] << "\"" << endl;
       }
     }
-    else if ( ! strcmp ( argv [ 1 ], "read" ) )
-    {
-      FILE *f = fopen ( argv [ 2 ], "w" );
-
-      if ( f != NULL )
-      {
-        // default to 1mbit
-        int read = 0x8000 * 4;
-
-        if ( argc > 3 )
-          read = atoi ( argv [ 3 ] );
-
-        cout << "Reading " << read << " bytes ... " << flush;
-        
-        BYTE* buf = read_cart ( t, h, 0, read );
-        
-        fwrite ( buf, read, 1, f );
-        
-        free ( buf );
-        
-        fclose ( f );
-      }
-      else
-      {
-        cout << "Couldn't open \"" << argv [ 2 ] << "\"" << endl;
-      }
-    }
-  }
 */
 }
 
