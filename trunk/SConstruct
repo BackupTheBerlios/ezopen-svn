@@ -1,4 +1,8 @@
+print "Compiling ezopen ...\n"
 ccflags = '-DDEBUG -g'
 sources = [ 'ezopen.cc', 'CEzFlashBase.cc', 'CEzFlashFujistu.cc' ]
 libs = [ 'usb' ]
 Program ( 'ezopen', sources, LIBS=libs, CCFLAGS=ccflags )
+
+print "Compiling patcher ...\n"
+Program ( 'patcher', 'patcher.c' )
