@@ -248,51 +248,74 @@ bool EzopenBaseIO::prepROMOp ( handle_t &hDev, u_int32_t page )
 
 bool EzopenBaseIO::closeROMOp ( handle_t &hDev )
 {
+  int r = -1;
+
   // CartCloseReadOP ( h );
   ctrlbuf [ 0 ] = Close_Read_Op;
-  bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( lpvoid_t ) ctrlbuf, 1 );
+  r = bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( lpvoid_t ) ctrlbuf, 1 );
 
   // CartClosePort ( h );
   ctrlbuf [ 0 ] = Close_Port;
-  bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( char* ) ctrlbuf, 1 );
+  r += bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( char* ) ctrlbuf, 1 );
 
-  return true;
+  if ( r < 0 )
+    return true;
+  
+  return false;
 }
 
 bool EzopenBaseIO::cartRead ( handle_t &hDev, dword_t offset, byte_t* buf, unsigned long bs )
 {
+  int r = -1;
+
   ctrlbuf[0] = ROM_Read;
   * ( dword_t * ) &ctrlbuf[1] = offset;
-  bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, (char*) ctrlbuf, 4 );
-  bulk ( hDev, IOCTL_EZUSB_BULK_READ, 2, (char*) buf, bs );
+  r = bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, (char*) ctrlbuf, 4 );
+  r += bulk ( hDev, IOCTL_EZUSB_BULK_READ, 2, (char*) buf, bs );
 
-  return true;
+  if ( r < 0)
+    return true;
+  
+  return false;
 }
 
 bool EzopenBaseIO::cartWrite ( handle_t &hDev, dword_t offset, byte_t* buf, unsigned long bs )
 {
+  int r = -1;
   //while ( CartReadStatus ( hDev ) != 0x8080 );
   
   ctrlbuf [ 0 ] = ROM_Write;
-  *(dword_t *)&ctrlbuf [ 1 ] = offset;
+  *(dword_t *) &ctrlbuf [ 1 ] = offset;
   ctrlbuf [ 4 ] = ROM_Write_fujistu;
-  bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, (char*) ctrlbuf, 5 );
-  bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 2, (char*) buf, bs );
+  r = bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, (char*) ctrlbuf, 5 );
+  r += bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 2, (char*) buf, bs );
 
-  return true;
+  if ( r < 0 )
+    return true;
+  
+  return false;
 }
 
 bool EzopenBaseIO::readROM ( handle_t &hDev, u_int32_t offset, u_int32_t length, byte_t* buf ) 
 {
+  int r = -1;
   // "(offset >> 1) & 0xFFFFFF" becomes the address where to start
-  cartRead ( hDev, (offset >> 1) & 0xFFFFFF, buf, length );
-
-  return true;
+  r = cartRead ( hDev, (offset >> 1) & 0xFFFFFF, buf, length );
+  
+  if ( r < 0 )
+    return true;
+  
+  return false;
 }
 
 bool EzopenBaseIO::writeROM ( handle_t &hDev, u_int32_t offset, byte_t* buf, u_int32_t bs )
 {
-  cartWrite ( hDev, (offset >> 1) & 0xFFFFFF, buf, bs );
+  int r = -1;
+
+  r = cartWrite ( hDev, (offset >> 1) & 0xFFFFFF, buf, bs );
+
+  if ( r < 0 )
+    return true;
   
-  return true;
+  return false;
 }
