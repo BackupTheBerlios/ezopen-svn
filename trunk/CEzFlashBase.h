@@ -68,43 +68,43 @@ protected:
   BYTE  StateBuf [ 64 ];
 
 public:
-  DWORD Bulk ( HANDLE hDev, unsigned long ControlCode, unsigned long pipeNum,
+  DWORD Bulk ( HANDLE &hDev, unsigned long ControlCode, unsigned long pipeNum,
                LPVOID buf, unsigned long bytecount );
-  void CartRead ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
+  void CartRead ( HANDLE &hDev, DWORD StartAddr, BYTE* pbuf,
                   unsigned long ByteCount );
-  void CartReadEx ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
+  void CartReadEx ( HANDLE &hDev, DWORD StartAddr, BYTE* pbuf,
                     unsigned long ByteCount );
-  void CartRAMRead ( HANDLE hDev, WORD StartAddr, BYTE* pbuf,
+  void CartRAMRead ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,
                      unsigned long ByteCount );
-  void CartRAMWrite ( HANDLE hDev, WORD StartAddr, BYTE* pbuf,
+  void CartRAMWrite ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,
                       unsigned long ByteCount );
-  void CartRAMWriteEx ( HANDLE hDev, WORD StartAddr, BYTE* pbuf,
+  void CartRAMWriteEx ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,
                       unsigned long ByteCount );
   DWORD WriteDevice ( HANDLE &hDev, UINT address, WORD data );
   WORD ReadDevice ( HANDLE &hDev, UINT address );
-  void CartOpenFlashOP ( HANDLE hDev );
-  void CartCloseFlashOP ( HANDLE hDev );
-  void CartSetRAMPage ( HANDLE hDev, DWORD Offset );
-  void CartSetROMPage ( HANDLE hDev, DWORD Offset );
+  void CartOpenFlashOP ( HANDLE &hDev );
+  void CartCloseFlashOP ( HANDLE &hDev );
+  void CartSetRAMPage ( HANDLE &hDev, DWORD Offset );
+  void CartSetROMPage ( HANDLE &hDev, DWORD Offset );
   bool OpenCartDevice ( HANDLE &hDev );
   bool CloseCartDevice ( HANDLE &hDev );
-  void CartOpenPort ( HANDLE hDev );
-  void CartClosePort ( HANDLE hDev );
-  void CartOpenReadOP ( HANDLE hDev );
-  void CartCloseReadOP ( HANDLE hDev );
+  void CartOpenPort ( HANDLE &hDev );
+  void CartClosePort ( HANDLE &hDev );
+  void CartOpenReadOP ( HANDLE &hDev );
+  void CartCloseReadOP ( HANDLE &hDev );
 
-  void SetReadArray ( HANDLE hDev ) { };
-  void CartWrite ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
+  virtual void SetReadArray ( HANDLE &hDev ) { };
+  virtual void CartWrite ( HANDLE &hDev, DWORD StartAddr, BYTE* pbuf,
                    unsigned long ByteCount) { };
-  void CartWriteEx ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
+  virtual void CartWriteEx ( HANDLE &hDev, DWORD StartAddr, BYTE* pbuf,
                      unsigned long ByteCount) { };
-  WORD CartReadStatus ( HANDLE hDev ) { return 0; };
-  void CartErase ( HANDLE hDev, DWORD BlockNum ) { };
-  void CartEraseEx ( HANDLE hDev, DWORD Address ) { };
-  DWORD CartReadID ( HANDLE hDev ) { return 0; };
-  void CartLock ( HANDLE hDev ) { };
-  void CartUnlock ( HANDLE hDev ) { };
-  void CartClearStatus ( HANDLE hDev ) { };
+  virtual WORD CartReadStatus ( HANDLE &hDev ) { return 0; };
+  virtual void CartErase ( HANDLE &hDev, DWORD BlockNum ) { };
+  virtual void CartEraseEx ( HANDLE &hDev, DWORD Address ) { };
+  virtual DWORD CartReadID ( HANDLE &hDev ) { return 0; };
+  virtual void CartLock ( HANDLE &hDev ) { };
+  virtual void CartUnlock ( HANDLE &hDev ) { };
+  virtual void CartClearStatus ( HANDLE &hDev ) { };
 };
 
 #endif

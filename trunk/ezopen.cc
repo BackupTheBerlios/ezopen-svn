@@ -33,7 +33,7 @@ struct gba_header
 
 // initialise reading of ROM
 void
-readROMOpen ( CEzFlashBase &t, HANDLE h )
+readROMOpen ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartSetROMPage ( h, 0 );
   t.CartOpenPort ( h );
@@ -43,7 +43,7 @@ readROMOpen ( CEzFlashBase &t, HANDLE h )
 
 // read data from the ROM
 BYTE*
-readROM ( CEzFlashBase &t, HANDLE h, u_int32_t offset, u_int32_t length )
+readROM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, u_int32_t length )
 {
   BYTE* buf = ( BYTE* ) calloc ( 1, length );
   
@@ -54,7 +54,7 @@ readROM ( CEzFlashBase &t, HANDLE h, u_int32_t offset, u_int32_t length )
 
 // finish reading of ROM
 void
-readROMClose ( CEzFlashBase &t, HANDLE h )
+readROMClose ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartCloseFlashOP ( h );
   t.CartClosePort ( h );
@@ -62,48 +62,48 @@ readROMClose ( CEzFlashBase &t, HANDLE h )
 
 // initialise writing/erasing of ROM
 void
-writeROMOpen ( CEzFlashBase &t, HANDLE h )
+writeROMOpen ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartOpenFlashOP ( h );
   t.SetReadArray ( h );
 }
 
 void
-writeROM ( CEzFlashBase &t, HANDLE h, u_int32_t offset, BYTE* buf, u_int32_t bs )
+writeROM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, BYTE* buf, u_int32_t bs )
 {
   t.CartWriteEx ( h, offset, buf, bs );
 }
 
 // close ROM writing
 void
-writeROMClose ( CEzFlashBase &t, HANDLE h )
+writeROMClose ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartCloseFlashOP ( h );
 }
 
 // open ROM erasing
 void
-eraseROMOpen ( CEzFlashBase &t, HANDLE h )
+eraseROMOpen ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartOpenFlashOP ( h );
 }
 
 void
-eraseROM ( CEzFlashBase &t, HANDLE h, u_int32_t block )
+eraseROM ( CEzFlashBase &t, HANDLE &h, u_int32_t block )
 {
   t.CartErase ( h, block );
 }
 
 // close ROM erasing
 void
-eraseROMClose ( CEzFlashBase &t, HANDLE h )
+eraseROMClose ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartCloseFlashOP ( h );
 }
 
 // get cart info
 struct gba_header*
-romGetInfo ( CEzFlashBase &t, HANDLE h, int offset )
+romGetInfo ( CEzFlashBase &t, HANDLE &h, int offset )
 {
   // start by reading the first 192 bytes, which should contain the first
   // ROM's header
@@ -150,7 +150,7 @@ cartOpen ( CEzFlashBase &t, HANDLE &h )
   if ( t.OpenCartDevice ( h ) == false )
     return false;
 
-  //t.CartLock ( h );
+  t.CartLock ( h );
 
   return true;
 }

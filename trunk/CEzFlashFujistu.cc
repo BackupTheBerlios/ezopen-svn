@@ -2,7 +2,7 @@
 
 #include <usb.h>
 
-void CEzFlashFujistu::SetReadArray ( HANDLE hDev )
+void CEzFlashFujistu::SetReadArray ( HANDLE &hDev )
 {
   // there are two choices - Aladdin provided the first block, while reverse
   // engineering the Windows USB calls suggests the second block ... either
@@ -25,7 +25,7 @@ void CEzFlashFujistu::SetReadArray ( HANDLE hDev )
 
 }
 
-void CEzFlashFujistu::CartWrite ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
+void CEzFlashFujistu::CartWrite ( HANDLE &hDev, DWORD StartAddr, BYTE* pbuf,
                                   unsigned long ByteCount )
 {
 	while ( CartReadStatus ( hDev ) != 0x8080 );
@@ -40,7 +40,7 @@ void CEzFlashFujistu::CartWrite ( HANDLE hDev, DWORD StartAddr, BYTE* pbuf,
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,2,(char*)pbuf,ByteCount);
 }
 
-void CEzFlashFujistu::CartWriteEx(HANDLE hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashFujistu::CartWriteEx(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
 	DWORD realaddress = 0;
 	realaddress = (StartAddr>>1)&0xFFFFFF;
@@ -48,12 +48,12 @@ void CEzFlashFujistu::CartWriteEx(HANDLE hDev, DWORD StartAddr, BYTE* pbuf, unsi
 }
 
 
-WORD CEzFlashFujistu::CartReadStatus ( HANDLE hDev )
+WORD CEzFlashFujistu::CartReadStatus ( HANDLE &hDev )
 {
 	return 0x8080;
 }
 
-void CEzFlashFujistu::CartErase(HANDLE hDev, DWORD BlockNum)
+void CEzFlashFujistu::CartErase(HANDLE &hDev, DWORD BlockNum)
 {
 	WORD read1=1,read2=2;
 	BlockNum = BlockNum&0xFF ;
@@ -88,14 +88,14 @@ void CEzFlashFujistu::CartErase(HANDLE hDev, DWORD BlockNum)
 	}
 }
 
-void CEzFlashFujistu::CartEraseEx(HANDLE hDev, DWORD Address)
+void CEzFlashFujistu::CartEraseEx(HANDLE &hDev, DWORD Address)
 {
 	DWORD  block = 0 ;
 	block = (((Address>>1)&0xFFFFFF)>>17)<<1 ;
 	CartErase(hDev,block);
 }
 
-DWORD CEzFlashFujistu::CartReadID(HANDLE hDev)
+DWORD CEzFlashFujistu::CartReadID(HANDLE &hDev)
 {
 	BYTE id1,id2,id3,id4;
 	WriteDevice(hDev,0x555*2,0xAA) ;
@@ -113,17 +113,17 @@ DWORD CEzFlashFujistu::CartReadID(HANDLE hDev)
 	return (id4<<24)|(id3<<16)|(id2<<8)|(id1) ;
 }
 
-void CEzFlashFujistu::CartLock(HANDLE hDev)
+void CEzFlashFujistu::CartLock(HANDLE &hDev)
 {
 	return ;
 }
 
-void CEzFlashFujistu::CartUnlock(HANDLE hDev)
+void CEzFlashFujistu::CartUnlock(HANDLE &hDev)
 {
 	return ;
 }
 
-void CEzFlashFujistu::CartClearStatus(HANDLE hDev)
+void CEzFlashFujistu::CartClearStatus(HANDLE &hDev)
 {
 	return ;
 }

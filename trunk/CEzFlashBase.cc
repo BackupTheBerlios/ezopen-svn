@@ -12,7 +12,7 @@ using namespace std;
 
 #include "CEzFlashBase.h"
 
-DWORD CEzFlashBase::Bulk ( HANDLE hDev, unsigned long ControlCode,
+DWORD CEzFlashBase::Bulk ( HANDLE &hDev, unsigned long ControlCode,
                            unsigned long pipeNum, LPVOID buf,
                            unsigned long ByteCount )
 {
@@ -58,7 +58,7 @@ DWORD CEzFlashBase::Bulk ( HANDLE hDev, unsigned long ControlCode,
   return r;
 }
 
-void CEzFlashBase::CartRead(HANDLE hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashBase::CartRead(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
 	ctrlbuf[0] = ROM_Read;
 	*(DWORD *)&ctrlbuf[1] = StartAddr;
@@ -69,13 +69,13 @@ void CEzFlashBase::CartRead(HANDLE hDev, DWORD StartAddr, BYTE* pbuf, unsigned l
 	Bulk(hDev,IOCTL_EZUSB_BULK_READ,2,(char*)pbuf,ByteCount);
 }
 
-void CEzFlashBase::CartReadEx(HANDLE hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashBase::CartReadEx(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
   CartRead ( hDev, ( StartAddr >> 1 ) & 0xFFFFFF, pbuf, ByteCount );
 }
 
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartRAMRead(HANDLE hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashBase::CartRAMRead(HANDLE &hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
 	ctrlbuf[0] = RAM_Read;
 	*(WORD *)&ctrlbuf[1] = StartAddr;
@@ -86,7 +86,7 @@ void CEzFlashBase::CartRAMRead(HANDLE hDev, WORD StartAddr, BYTE* pbuf, unsigned
 	Bulk(hDev,IOCTL_EZUSB_BULK_READ,4,(char*)pbuf,ByteCount);
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartRAMWrite(HANDLE hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashBase::CartRAMWrite(HANDLE &hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
 	ctrlbuf[0] = RAM_Write;
 	*(WORD *)&ctrlbuf[1] = StartAddr;
@@ -97,7 +97,7 @@ void CEzFlashBase::CartRAMWrite(HANDLE hDev, WORD StartAddr, BYTE* pbuf, unsigne
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,2,(char*)pbuf,ByteCount);
 }
 
-void CEzFlashBase::CartRAMWriteEx(HANDLE hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+void CEzFlashBase::CartRAMWriteEx(HANDLE &hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {
   DWORD realaddress = 0;
   realaddress = (StartAddr>>1)&0xFFFFFF;
@@ -131,7 +131,7 @@ WORD CEzFlashBase::ReadDevice(HANDLE &hDev,UINT address)
 }
 
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartOpenFlashOP(HANDLE hDev)
+void CEzFlashBase::CartOpenFlashOP(HANDLE &hDev)
 {
 /*	ctrlbuf[0] = Open_Flash_Op;
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,3,ctrlbuf,1);
@@ -145,7 +145,7 @@ void CEzFlashBase::CartOpenFlashOP(HANDLE hDev)
 
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartCloseFlashOP(HANDLE hDev)
+void CEzFlashBase::CartCloseFlashOP(HANDLE &hDev)
 {
 /*	ctrlbuf[0] = Close_Flash_Op;
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,3,ctrlbuf,1);
@@ -158,7 +158,7 @@ void CEzFlashBase::CartCloseFlashOP(HANDLE hDev)
 	WriteDevice(hDev,0xfe0000,0x15FF);
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartOpenReadOP(HANDLE hDev)
+void CEzFlashBase::CartOpenReadOP(HANDLE &hDev)
 {
 /*	ctrlbuf[0] = Open_Flash_Op;
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,3,ctrlbuf,1);
@@ -167,13 +167,13 @@ void CEzFlashBase::CartOpenReadOP(HANDLE hDev)
   Bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( LPVOID ) ctrlbuf, 1 );
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartCloseReadOP(HANDLE hDev)
+void CEzFlashBase::CartCloseReadOP(HANDLE &hDev)
 {
   ctrlbuf [ 0 ] = Close_Read_Op;
   Bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( LPVOID ) ctrlbuf, 1 );
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartSetRAMPage(HANDLE hDev,DWORD Offset)
+void CEzFlashBase::CartSetRAMPage(HANDLE &hDev,DWORD Offset)
 {
 /*	ctrlbuf[0] = Set_SRAM_Page;
 	ctrlbuf[1] = (BYTE)Offset&0xFF;
@@ -188,7 +188,7 @@ void CEzFlashBase::CartSetRAMPage(HANDLE hDev,DWORD Offset)
 	WriteDevice(hDev,0xfe0000,0x15FF);
 }
 //---------------------------------------------------------------------------
-void CEzFlashBase::CartSetROMPage(HANDLE hDev,DWORD Offset)
+void CEzFlashBase::CartSetROMPage(HANDLE &hDev,DWORD Offset)
 {
 /*	ctrlbuf[0] = Set_Flash_Offset;
 	ctrlbuf[1] = (BYTE)Offset&0xFF;
@@ -266,14 +266,14 @@ bool CEzFlashBase::CloseCartDevice ( HANDLE &hDev )
   return usb_close ( hDev ) == 0;
 }
 
-void CEzFlashBase::CartOpenPort ( HANDLE hDev )
+void CEzFlashBase::CartOpenPort ( HANDLE &hDev )
 {
   ctrlbuf [ 0 ] = Open_Port;
   
   Bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, ( char* ) ctrlbuf, 1 );
 }
 
-void CEzFlashBase::CartClosePort ( HANDLE hDev )
+void CEzFlashBase::CartClosePort ( HANDLE &hDev )
 {
   ctrlbuf [ 0 ] = Close_Port;
   
