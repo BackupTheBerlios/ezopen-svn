@@ -1,0 +1,1 @@
+Program(['eztests.cc', 'EzopenBaseIO.cc'], LIBS='usb')
