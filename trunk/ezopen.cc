@@ -6,9 +6,9 @@
 
 #include "CEzFlashFujistu.h"
 
-#define BLOCK_COUNT_DEFAULT   4
-#define BLOCK_SIZE_DEFAULT    0x8000
-#define BLOCK_OFFSET_DEFAULT  0
+#define BLOCK_COUNT   2
+#define BLOCK_SIZE    0x10000
+#define BLOCK_OFFSET  0
 
 using namespace std;
 
@@ -168,14 +168,11 @@ main ( int argc, char *argv [] )
   HANDLE h = NULL;
   CEzFlashFujistu t;
 
-  // default block size is 0x8000 = 32768 bytes = 0.25mbit
-  u_int32_t block_size = BLOCK_SIZE_DEFAULT;
-
   // number of blocks to read/write
-  u_int32_t block_count = BLOCK_COUNT_DEFAULT;
+  u_int32_t block_count = BLOCK_COUNT;
   
   // block offset
-  u_int32_t block_offset = BLOCK_OFFSET_DEFAULT;
+  u_int32_t block_offset = BLOCK_OFFSET;
  
   // default operation
   string operation = "";
@@ -198,23 +195,7 @@ main ( int argc, char *argv [] )
     // parse the other options
     for ( ; l < ( argc - 1 ); ++l )
     {      
-      if ( ! strcmp ( argv [ l ], "-b" ) )  // block size
-      {
-        int t = atoi ( argv [ l + 1 ] );
-
-        if ( t > 0 )
-        {
-          cout << "Block size set to " << t << endl;
-          block_size = t;
-          l++;
-        }
-        else
-        {
-          cout << "Refusing to set block size to " << t
-               << ", leaving at " << block_size << endl;
-        }
-      }
-      else if ( ! strcmp ( argv [ l ], "-o" ) ) // read/write block offset
+      if ( ! strcmp ( argv [ l ], "-o" ) ) // read/write block offset
       {
         int t = atoi ( argv [ l + 1 ] );
 
@@ -299,20 +280,20 @@ main ( int argc, char *argv [] )
       rom.seekg ( 0, ios::beg );
       
       // calculate the number of blocks to write
-      block_count = ( length / block_size ) + ( length % block_size > 0 ? 1 : 0 );
+      block_count = ( length / BLOCK_SIZE ) + ( length % BLOCK_SIZE > 0 ? 1 : 0 );
 
       cout << "Writing \"" << filename << "\" to cart "
-           << "(cart is " << block_count << " * " << block_size << " blocks) "
+           << "(cart is " << block_count << " * " << BLOCK_SIZE << " blocks) "
            << endl << "Erasing - --%" << flush;
 
       // start ROM erasing
       eraseROMOpen ( t, h );
 
+      // when erasing the block size is always 65536 (0x10000)
       float percent = 0.0f;
-      float pinc = 100.0f / ( float ) ( block_count / 2.0f );
+      float pinc = 100.0f / ( float ) block_count;
 
-      for ( u_int32_t l = block_offset;
-            l < ( block_offset + block_count ); l += 2 )
+      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
       {
         cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
         
@@ -331,22 +312,18 @@ main ( int argc, char *argv [] )
       
       cout << "Flashing - --%" << flush;
 
-      BYTE buf [ block_size ];
+      BYTE buf [ BLOCK_SIZE ];
       percent = 0;
-      u_int32_t bc = 0;
       
-      pinc = 100.0f / ( float ) block_count;
-      
-      while ( bc < block_count )
+      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
       {
         cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
 
-        rom.read ( ( char* ) buf, block_size );
+        rom.read ( ( char* ) buf, BLOCK_SIZE );
 
-        writeROM ( t, h, ( bc * block_size ), buf, block_size );
+        writeROM ( t, h, ( l * BLOCK_SIZE ), buf, BLOCK_SIZE );
 
         percent += pinc;
-        bc++;
       }
 
       // finish ROM writing
@@ -395,12 +372,10 @@ main ( int argc, char *argv [] )
          << "  operation  = [ read | write | readram | writeram | info ]"
             << endl
          << "options;" << endl
-         << "  -b integer = block size (default: " << BLOCK_SIZE_DEFAULT
-            << ")" << endl
          << "  -c integer = block count to read/write (default: "
-            << BLOCK_COUNT_DEFAULT << ")" << endl
+            << BLOCK_COUNT << ")" << endl
          << "  -o integer = read/write block offset (default: "
-            << BLOCK_OFFSET_DEFAULT << ")" << endl
+            << BLOCK_OFFSET << ")" << endl
          << "  -f filename = file to read/write (for everything other than info)"
             << endl
          << endl;
