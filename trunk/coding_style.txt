@@ -1,0 +1,28 @@
+Brief;
+
+Just my personal thoughts :)
+
+* tabs are expanded to 2 spaces
+* white space is your friend! (ie. use ( 1 + 1 ) * 2, rather than (1+1)*2).
+* on the same note, the following are used;
+
+if ( boolean )
+{
+  // ...
+}
+else
+{
+  // ...
+}
+
+while ( boolean )
+{
+  // ...
+}
+
+for ( a ; b ; c )
+{
+  // ...
+}
+
+etc.! It all helps code readability.

@@ -1,0 +1,12 @@
+* remove all EZClient code (the two classes CEzFlashBase and CEzFlashFujistu)
+* refactor 'main' code
+* introduce *real* command line option checking
+* automate ROM patching 'on the fly' when burning to cart.
+* automated ROM padding (IIRC ROM size must lie on a power of 2 boundary)
+* percentage progress indicator when erasing ROM blocks
+* ROM blocks are 64k but current erasing treats them as 32k (and hence erases
+  twice as many as needed).
+* saver read/write support
+* saver fixes (possibly ROM hack required)
+* cartridge header dumping (ie. display contents)
+* formatting cartridge
