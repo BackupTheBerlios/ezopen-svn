@@ -76,6 +76,7 @@ public:
                     unsigned long ByteCount );
   void CartRAMRead ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,
                      unsigned long ByteCount );
+  void CartRAMReadEx(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount);
   void CartRAMWrite ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,
                       unsigned long ByteCount );
   void CartRAMWriteEx ( HANDLE &hDev, WORD StartAddr, BYTE* pbuf,

@@ -83,8 +83,14 @@ void CEzFlashBase::CartRAMRead(HANDLE &hDev, WORD StartAddr, BYTE* pbuf, unsigne
 	Bulk(hDev,IOCTL_EZUSB_BULK_WRITE,4,(char*)ctrlbuf,3);
 	//sleep(5);
 //	Bulk(hDev,IOCTL_EZUSB_BULK_READ,8,(char*)pbuf,ByteCount);
-	Bulk(hDev,IOCTL_EZUSB_BULK_READ,4,(char*)pbuf,ByteCount);
+	Bulk(hDev,IOCTL_EZUSB_BULK_READ,2,(char*)pbuf,ByteCount);
 }
+
+void CEzFlashBase::CartRAMReadEx(HANDLE &hDev, DWORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
+{
+  CartRAMRead ( hDev, ( StartAddr >> 1 ) & 0xFFFFFF, pbuf, ByteCount );
+}
+
 //---------------------------------------------------------------------------
 void CEzFlashBase::CartRAMWrite(HANDLE &hDev, WORD StartAddr, BYTE* pbuf, unsigned long ByteCount)
 {

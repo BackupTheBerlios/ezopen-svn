@@ -8,6 +8,7 @@
 
 #define BLOCK_COUNT   2
 #define BLOCK_SIZE    0x10000
+#define RAM_BLOCK_SIZE  64
 #define BLOCK_OFFSET  0
 
 using namespace std;
@@ -46,7 +47,7 @@ void
 readROM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, u_int32_t length,
     BYTE *buf )
 {
-  t.CartRead ( h, offset, buf, length );
+  t.CartReadEx ( h, offset, buf, length );
 }
 
 // finish reading of ROM
@@ -55,6 +56,49 @@ readROMClose ( CEzFlashBase &t, HANDLE &h )
 {
   t.CartCloseReadOP ( h );
   t.CartClosePort ( h );
+}
+
+void
+readRAMOpen ( CEzFlashBase &t, HANDLE &h, u_int32_t page )
+{
+  t.CartOpenFlashOP ( h );
+  t.CartSetRAMPage ( h, page );
+  t.SetReadArray ( h );
+}
+
+void
+readRAM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, BYTE* buf, u_int32_t bs )
+{
+  //t.CartRAMReadEx ( h, offset, buf, bs );
+  t.CartRAMRead ( h, offset, buf, bs );
+}
+
+void readRAMClose ( CEzFlashBase &t, HANDLE &h )
+{
+  t.CartCloseFlashOP ( h );
+}
+
+void
+writeRAMOpen ( CEzFlashBase &t, HANDLE &h, u_int32_t page )
+{
+  //t.CartOpenPort ( h );
+  t.CartOpenFlashOP ( h );
+  t.CartSetRAMPage ( h, page );
+  t.SetReadArray ( h );
+}
+
+void
+writeRAM ( CEzFlashBase &t, HANDLE &h, u_int32_t offset, BYTE* buf, u_int32_t bs )
+{
+  //t.CartRAMWriteEx ( h, offset, buf, bs );
+  t.CartRAMWrite ( h, offset, buf, bs );
+}
+
+void
+writeRAMClose ( CEzFlashBase &t, HANDLE &h )
+{
+  //t.CartClosePort ( h );
+  t.CartCloseFlashOP ( h );
 }
 
 // initialise writing/erasing of ROM
@@ -398,6 +442,58 @@ main ( int argc, char *argv [] )
       cout << "Cannot open device! (Permissions problem?)" << endl;
       return 1;
     }
+
+    // open the filename
+    if ( filename == "" )
+    {
+      cout << "No RAM file specified." << endl;
+      return 1;
+    }
+    
+    // open the ram file
+    ofstream ram ( filename.c_str () );
+    
+    // make sure we can open the file ...
+    if ( ! ram )
+    {
+      // couldn't open file :(
+      cout << "Could not open output file \"" << filename << "\"." << endl;
+      return 1;
+    }
+    else
+    {
+      cout << "Reading " << block_count << " blocks (1 block = " << RAM_BLOCK_SIZE
+           << " bytes) fram cart and writing to \"" << filename << "\"."
+           << endl << "Reading - --%" << flush;
+
+      // start ram erasing
+      readRAMOpen ( t, h, 0 );
+
+      // when erasing the block size is always 65536 (0x10000)
+      BYTE buf [ RAM_BLOCK_SIZE ];
+      float percent = 0.0f;
+      float pinc = 100.0f / ( float ) block_count;
+
+      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
+      {
+        cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
+        
+        readRAM ( t, h, ( l * RAM_BLOCK_SIZE ), buf, RAM_BLOCK_SIZE );
+
+        ram.write ( ( char* ) buf, RAM_BLOCK_SIZE );
+        
+        percent += pinc;
+      }
+
+      // finish ram writing
+      readRAMClose ( t, h );
+
+      cout << "\b\b\bDone." << endl;
+      
+      ram.close ();
+    }
+    
+    cartClose ( t, h );
   }
   else if ( operation == "writeram" )
   {
@@ -407,6 +503,70 @@ main ( int argc, char *argv [] )
       cout << "Cannot open device! (Permissions problem?)" << endl;
       return 1;
     }
+
+    // open the filename
+    if ( filename == "" )
+    {
+      cout << "No RAM file specified." << endl;
+      return 1;
+    }
+    
+    // open the ROM file
+    ifstream ram ( filename.c_str () );
+    
+    // make sure we can open the file ...
+    if ( ! ram )
+    {
+      // couldn't open file :(
+      cout << "Could not open RAM file \"" << filename << "\"." << endl;
+      return 1;
+    }
+    else
+    {
+      // find the full length of the file
+      ram.seekg ( 0, ios::end );
+      
+      u_int32_t length = ram.tellg ();
+      
+      ram.seekg ( 0, ios::beg );
+      
+      // calculate the number of blocks to write
+      block_count = ( length / RAM_BLOCK_SIZE ) + ( length % RAM_BLOCK_SIZE > 0 ? 1 : 0 );
+
+      // start ROM writing
+      writeRAMOpen ( t, h, 0 );
+
+      cout << "Writing \"" << filename << "\" to cart "
+           << "(cart is " << block_count << " * " << RAM_BLOCK_SIZE << " blocks) "
+           << "Flashing - --%" << flush;
+
+      // when erasing the block size is always 65536 (0x10000)
+      float percent = 0.0f;
+      float pinc = 100.0f / ( float ) block_count;
+
+      BYTE buf [ RAM_BLOCK_SIZE ];
+      percent = 0;
+      
+      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
+      {
+        cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
+
+        ram.read ( ( char* ) buf, RAM_BLOCK_SIZE );
+
+        writeRAM ( t, h, ( l * RAM_BLOCK_SIZE ), buf, RAM_BLOCK_SIZE );
+
+        percent += pinc;
+      }
+
+      // finish ROM writing
+      writeRAMClose ( t, h );
+
+      cout << "\b\b\bDone." << endl;
+      
+      ram.close ();
+    }
+    
+    cartClose ( t, h );
   }
   else if ( operation == "info" )
   {
@@ -462,75 +622,6 @@ main ( int argc, char *argv [] )
   }
   
 /*
-    else if ( ! strcmp ( argv [ 1 ], "writeram" ) )
-    {
-      // did they specify a start offset?
-      if ( argc > 3 )
-      {
-        offset = atoi ( argv [ 3 ] );
-        cout << "Setting write offset to " << offset << endl;
-      }
-      
-      FILE *f = fopen ( argv [ 2 ], "r" );
-
-      // make sure we can open the file ...
-      if ( f != NULL )
-      {
-        // find the full length of the file
-        fseek ( f, 0, SEEK_END );
-        unsigned long length = ftell ( f );
-
-        // back we go ...
-        rewind ( f );
-
-        // number of blocks to use
-        int bcount = ( length / block_size ) + ( length % block_size > 0 ? 1 : 0 );
-
-        cout << "Writing \"" << argv [ 2 ] << "\" to cart." << endl << flush;
-
-        //t.CartOpenFlashOP ( h );
-        t.CartOpenPort ( h );
-
-        cout << "SetReadArray ... " << flush;
-
-        t.SetReadArray ( h );
-
-        cout << "Done." << endl;
-
-        // quarter megabit chunks
-        cout << "Writing " << bcount
-             << " blocks (in " << block_size << " byte chunks) ... --%" << flush;
-
-        BYTE buf [ block_size ];
-        unsigned long p = 0;
-        float percent = 0;
-        
-        offset *= block_size;
-
-        while ( p < length )
-        {
-          percent = ( ( float ) p / ( float ) length ) * 100.0f;
-
-          cout << "\b\b\b" << setw ( 2 ) << ( int ) percent << "%" << flush;
-
-          fread ( buf, block_size, 1, f );
-
-          t.CartRAMWriteEx ( h, offset + p, buf, block_size );
-
-          p += block_size;
-        }
-
-        //t.CartCloseFlashOP ( h );
-        t.CartClosePort ( h );
-
-        cout << "\b\b\bDone!" << endl;
-        fclose ( f );
-      }
-      else
-      {
-        cout << "Couldn't open \"" << argv [ 2 ] << "\"" << endl;
-      }
-    }
     else if ( ! strcmp ( argv [ 1 ], "readram" ) )
     {
       if ( argc > 3 )
