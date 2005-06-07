@@ -140,12 +140,12 @@ bool EzopenBaseIO::prepRAMOp ( handle_t &hDev, u_int32_t page )
   int r = -1;
 
   // set RAM page
-  r = writeDevice(hDev,0xff0000,0xd2FF);
-  r += writeDevice(hDev,0x000000,0x15FF);
-  r += writeDevice(hDev,0x010000,0xd2FF);
-  r += writeDevice(hDev,0x020000,0x15FF);
-  r += writeDevice(hDev,0xe00000,(word_t) page);
-  r += writeDevice(hDev,0xfe0000,0x15FF);
+  r = writeDevice ( hDev, 0xff0000, 0xd2FF );
+  r += writeDevice ( hDev, 0x000000, 0x15FF );
+  r += writeDevice ( hDev, 0x010000, 0xd2FF );
+  r += writeDevice ( hDev, 0x020000, 0x15FF );
+  r += writeDevice ( hDev, 0xe00000, (word_t) page );
+  r += writeDevice ( hDev, 0xfe0000, 0x15FF );
 
   if ( r < 0 )
     return false;

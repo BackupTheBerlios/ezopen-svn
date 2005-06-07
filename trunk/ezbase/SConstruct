@@ -1,1 +1,4 @@
-Program(['eztests.cc', 'EzopenBaseIO.cc'], LIBS='usb')
+Library('EzopenBaseIO.cc', LIBS='usb')
+Library('ezopen_io.cc', LIBS='usb')
+Library('ezopen_ezf2.cc', LIBS=['ezopen_io', 'usb'])
+Program('eztests.cc', LIBS=['usb', 'EzopenBaseIO'], LIBPATH='.')
