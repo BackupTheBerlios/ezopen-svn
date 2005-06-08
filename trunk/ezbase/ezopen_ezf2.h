@@ -10,8 +10,9 @@
 
 class ezopen_ezf2
 {
- public:
+ private:
   ezopen_io ezio;
+ public:
   bool cartOpen ( ez_handle_t &hDev );
   bool cartClose ( ez_handle_t &hDev );
   bool readRAM ( ez_handle_t &hDev, u_int32_t offset, ez_byte_t* buf, u_int32_t bs );
