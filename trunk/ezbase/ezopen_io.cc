@@ -20,6 +20,17 @@ ez_dword_t ezopen_io::bulk ( ez_handle_t &hDev, unsigned long ControlCode, unsig
   return r;
 }
 
+ez_dword_t ezopen_io::writeDevice ( ez_handle_t &hDev, ez_uint_t address, ez_word_t data )
+{
+  ctrlbuf[0] = Write_Operation;
+  ctrlbuf[1] = (address)&0xFF;
+  ctrlbuf[2] = (address>>8)&0xFF;
+  ctrlbuf[3] = (address>>16)&0xFF;
+  *(ez_word_t *)&ctrlbuf[4] = data;
+  
+  return bulk ( hDev, IOCTL_EZUSB_BULK_WRITE, 4, (char*)ctrlbuf, 6 );
+}
+
 bool ezopen_io::prepFlashOp ( ez_handle_t &hDev )
 {
   int r = -1;
