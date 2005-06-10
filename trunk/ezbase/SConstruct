@@ -2,3 +2,4 @@
 #Library('ezopen_io.cc', LIBS='usb')
 Library('ezopen_base', ['ezopen_ezf2.cc', 'ezopen_io.cc'], LIBS='usb')
 Program('eztests.cc', LIBS=['ezopen_base','usb'], LIBPATH='.')
+Program('ezopen.cc', LIBS=['ezopen_base','usb'], LIBPATH='.')

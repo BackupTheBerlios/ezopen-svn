@@ -69,14 +69,11 @@ public:
   ez_byte_t  statebuf [ 64 ];
 
   ez_dword_t bulk ( ez_handle_t &hDev, unsigned long ControlCode, unsigned long pipeNum,
-		 ez_lpvoid_t buf, unsigned long ByteCount );
+		    ez_lpvoid_t buf, unsigned long ByteCount );
   bool prepFlashOp ( ez_handle_t &hDev );
   bool closeFlashOp ( ez_handle_t &hDev );
-  bool prepRAMOp ( ez_handle_t &hDev, u_int32_t page );
-  bool closeRAMOp ( ez_handle_t &hDev );
-  bool prepROMOp ( ez_handle_t &hDev, u_int32_t page );
-  bool closeROMOp ( ez_handle_t &hDev );
   ez_dword_t writeDevice ( ez_handle_t &hDev, ez_uint_t address, ez_word_t data );
+  ez_word_t readDevice(ez_handle_t &hDev, ez_uint_t address);
   bool cartRead ( ez_handle_t &hDev, ez_dword_t offset, ez_byte_t* buf, unsigned long bs );
   bool cartWrite ( ez_handle_t &hDev, ez_dword_t offset, ez_byte_t* buf, unsigned long bs );
 };
