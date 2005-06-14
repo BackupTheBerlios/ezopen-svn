@@ -8,6 +8,7 @@
 
 #define BLOCK_COUNT   2
 #define BLOCK_SIZE    0x8000
+#define ERASE_BLOCK_SIZE  0x10000
 #define RAM_BLOCK_SIZE  64
 #define BLOCK_OFFSET  0
 
@@ -389,9 +390,10 @@ main ( int argc, char *argv [] )
 
       // when erasing the block size is always 65536 (0x10000)
       float percent = 0.0f;
-      float pinc = 100.0f / ( float ) block_count;
-
-      for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
+      u_int32_t ebc = ( length / ERASE_BLOCK_SIZE ) + ( length % ERASE_BLOCK_SIZE > 0 ? 1 : 0 );
+      float pinc = 100.0f / ( float ) ebc;
+      
+      for ( u_int32_t l = block_offset; l < ( block_offset + ebc ); ++l )
       {
         cout << "\b\b\b" << setw ( 2 ) << ( u_int32_t ) percent << "%" << flush;
         
@@ -411,7 +413,8 @@ main ( int argc, char *argv [] )
       cout << "Flashing - --%" << flush;
 
       BYTE buf [ BLOCK_SIZE ];
-      percent = 0;
+      percent = 0.0f;
+      pinc = 100.0f / ( float ) block_count;
       
       for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
       {
