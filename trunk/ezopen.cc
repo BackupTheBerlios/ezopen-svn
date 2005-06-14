@@ -7,7 +7,7 @@
 #include "CEzFlashFujistu.h"
 
 #define BLOCK_COUNT   2
-#define BLOCK_SIZE    0x10000
+#define BLOCK_SIZE    0x8000
 #define RAM_BLOCK_SIZE  64
 #define BLOCK_OFFSET  0
 
@@ -313,13 +313,13 @@ main ( int argc, char *argv [] )
            << " bytes) from cart and writing to \"" << filename << "\"."
            << endl << "Reading - --%" << flush;
 
-      // start ROM erasing
-      readROMOpen ( t, h );
-
       // when erasing the block size is always 65536 (0x10000)
       BYTE buf [ BLOCK_SIZE ];
       float percent = 0.0f;
       float pinc = 100.0f / ( float ) block_count;
+
+      // start ROM erasing
+      readROMOpen ( t, h );
 
       for ( u_int32_t l = block_offset; l < ( block_offset + block_count ); ++l )
       {
